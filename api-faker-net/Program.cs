@@ -1,4 +1,6 @@
+using System.Net;
 using System.Text;
+using Microsoft.Extensions.Primitives;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -20,50 +22,47 @@ app.Map("/{**route}", (HttpContext context) =>
 {
     var httpVerb = context.Request.Method;
     var path = context.Request.Path;
-    StringBuilder sb = new StringBuilder();
-    sb.AppendLine($"HTTP Verb being used: {httpVerb}");
-    sb.AppendLine($"Path used: {path}");
+    bool responseBody = false;
+    int sequenceNumber = 0;
+    int responseCode = 404;
     
     if (context.Request.Headers.TryGetValue("x-delay", out var delayValue))
     {
-        var delay = delayValue.ToString(); // headers can have multiple values
-        sb.AppendLine($"x-delay header present with value: {delay}");
-    }
-    else
-    {
-        sb.AppendLine("x-delay header not present");
+        var delay = delayValue.ToString();
     }
 
     if (context.Request.Headers.TryGetValue("x-set-response", out var response))
     {
-        var delay = delayValue.ToString(); // headers can have multiple values
-        sb.AppendLine($"x-set-response header. This would set the response of this request in the cache");
-    }
-    else
-    {
-        sb.AppendLine("x-set-response header not set. This will be used to load the cache for this endpoint with data");
+        responseBody = true;
     }
 
-    if (context.Request.Headers.TryGetValue("x-set-response", out var sequence))
+    if (context.Request.Headers.TryGetValue("x-sequence", out var sequence))
     {
-        var delay = delayValue.ToString(); // headers can have multiple values
-        sb.AppendLine($"x-sequence header. This will set the order of how the responses are returned from the cache with this endpoint");
-    }
-    else
-    {
-        sb.AppendLine("x-sequence header not set. This is only for single endpoints, or the first");
+        if (!string.IsNullOrWhiteSpace(sequence))
+        {
+            sequenceNumber = int.Parse(sequence);
+        }
     }
 
-    if (context.Request.Headers.TryGetValue("x-set-httpresponsecode", out var responsecode))
+    if (context.Request.Headers.TryGetValue("x-set-httpresponsecode", out var result))
     {
-        var delay = delayValue.ToString(); // headers can have multiple values
-        sb.AppendLine($"x-set-httpresponsecode header. This will set the HTTP Rsponse Code to {responsecode}");
+        responseCode = int.Parse(result);
     }
-    else
-    {
-        sb.AppendLine("x-set-httpresponsecode header not set.");
-    }
-    return sb.ToString();
+
+    
+    int status =
+        Enum.IsDefined(typeof(HttpStatusCode), responseCode)
+            ? responseCode
+            : 404;
+
+    return Results.Json(new { 
+        httpVerb = httpVerb,
+        path = path,
+        response = !responseBody ? "x-set-response header not set. This will be used to load the cache for this endpoint with data" : "Response set the the body of the request",
+        delay = (StringValues.IsNullOrEmpty(delayValue)) ? "No value set" : delayValue.ToString(),
+        sequence = sequenceNumber == 0 ? "This will set the order of how the responses are returned from the cache with this endpoint" : sequenceNumber.ToString(),
+        httpResponseCode = responseCode == 404 ? responseCode.ToString() : "x-set-httpresponsecode header not set",
+    }, statusCode: status);
 });
 
 app.Run();

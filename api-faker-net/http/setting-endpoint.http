@@ -1,0 +1,12 @@
+POST https://localhost:7161/signup/start
+Content-Type: application/json
+x-delay: 1000
+x-set-response:
+x-sequence: 1
+x-set-httpresponsecode: 413
+
+{
+        "FirstName": "test",
+        "Email": "test@test.com",
+        "Password": "werwertestst123123!!"
+}
