@@ -1,5 +1,4 @@
 using api_faker_net.Configuration;
-using api_faker_net.Handlers;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddApiFaker(builder.Configuration);
@@ -14,6 +13,6 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
-app.Map("/{**route}", (HttpContext context, IRequestHandler handler) => handler.HandleAsync(context));
+app.MapApiFaker();
 
 app.Run();
